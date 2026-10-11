@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>THUNDERCORE | Neon Disco Escape</title>
+
+<style>
+*{box-sizing:border-box}
+
+:root{
+  --cyan:#42f7ff;
+  --pink:#ff35dc;
+  --purple:#9c5cff;
+  --blue:#168cff;
+}
+
+body{
+  margin:0;
+  min-height:100vh;
+  overflow-x:hidden;
+  text-align:center;
+  color:white;
+  font-family:Arial,sans-serif;
+  background:#030411;
+}
+
+/* Dancing neon square background */
+#disco{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:-2;
+}
+
+body:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:radial-gradient(ellipse at center,
+    rgba(9,20,56,.25),rgba(2,3,12,.82));
+}
+
+header{padding:22px 10px 8px}
+
+h1{
+  margin:0;
+  font-size:clamp(27px,5vw,45px);
+  letter-spacing:3px;
+  color:#a4ffff;
+  text-shadow:0 0 8px #00eaff,0 0 22px #008cff,
+              0 0 42px #b000ff;
+  animation:titleGlow 2s infinite alternate;
+}
+
+@keyframes titleGlow{
+  from{filter:hue-rotate(0deg);text-shadow:0 0 10px #00eaff}
+  to{filter:hue-rotate(55deg);text-shadow:0 0 30px #ff35dc}
+}
+
+header p{color:#c3d6ff;font-size:13px;letter-spacing:2px}
+
+.controls{
+  display:flex;justify-content:center;align-items:center;
+  flex-wrap:wrap;gap:9px;padding:12px;
+}
+
+button,select{
+  color:white;
+  background:#101633;
+  border:1px solid var(--cyan);
+  border-radius:9px;
+  padding:11px 14px;
+  font-weight:bold;
+  cursor:pointer;
+  box-shadow:0 0 8px #008cff55;
+}
+
+button{
+  background:linear-gradient(135deg,#0752a6,#7623b7);
+  transition:transform .15s,box-shadow .15s;
+}
+
+button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 0 17px var(--cyan);
+}
+
+button:active{transform:scale(.96)}
+button:disabled{opacity:.45;cursor:not-allowed}
+
+.stats{
+  display:flex;justify-content:center;gap:8px;
+  flex-wrap:wrap;margin:7px 8px 15px;
+}
+
+.stat{
+  min-width:90px;padding:9px 13px;
+  background:#0b112b;
+  border:1px solid #3659a3;
+  border-radius:10px;
+  box-shadow:0 0 12px #4935bd44;
+}
+
+.stat span{display:block;color:#9cb9e9;font-size:11px}
+.stat b{
+  display:block;color:var(--cyan);
+  font-size:20px;margin-top:4px;
+}
+
+.game-frame{
+  position:relative;
+  width:min(94vw,720px);
+  margin:auto;
+  padding:7px;
+  border-radius:13px;
+  background:#070a1b;
+  animation:borderDance 2.4s linear infinite;
+}
+
+@keyframes borderDance{
+  0%{box-shadow:0 0 9px #00f6ff,0 0 20px #006dff}
+  25%{box-shadow:0 0 12px #ff35dc,0 0 30px #8b28ff}
+  50%{box-shadow:0 0 12px #baff38,0 0 28px #00ffad}
+  75%{box-shadow:0 0 12px #ffbd35,0 0 30px #ff35dc}
+  100%{box-shadow:0 0 9px #00f6ff,0 0 20px #006dff}
+}
+
+canvas{display:block;width:100%;height:auto;border-radius:7px}
+
+#message{
+  min-height:40px;
+  padding:13px 10px;
+  color:#ffe87b;
+  font-weight:bold;
+}
+
+.panel{
+  width:min(94vw,720px);
+  margin:14px auto;
+  padding:15px;
+  border:1px solid #5a64d7;
+  border-radius:12px;
+  background:rgba(8,14,39,.94);
+  box-shadow:0 0 16px #4526a355;
+}
+
+.panel h2{color:#78faff;margin:4px}
+.panel p{color:#c2d4ff;font-size:13px;line-height:1.7}
+
+.dpad{
+  display:grid;
+  grid-template-columns:58px 58px 58px;
+  gap:8px;
+  justify-content:center;
+  margin:12px auto;
+}
+
+.dpad button{
+  padding:13px 5px;
+  font-size:20px;
+  touch-action:manipulation;
+}
+
+.comparison{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;margin-top:14px;
+}
+
+.result{
+  background:#101b3d;border:1px solid #3765a3;
+  border-radius:10px;padding:12px;
+}
+
+.result h3{margin:4px;color:#6ffaff}
+.result.dfs h3{color:#ff82f0}
+.result p{margin:8px 0;color:#dce7ff}
+.result b{color:white}
+
+.legend{
+  display:flex;justify-content:center;gap:13px;
+  flex-wrap:wrap;color:#c4d8ff;font-size:12px;
+  margin:14px 8px;
+}
+
+footer{color:#8ba6d7;font-size:12px;padding:10px 12px 25px}
+
+@media(max-width:430px){
+  .stat{min-width:78px;padding:8px}
+  .controls button,.controls select{padding:10px;font-size:12px}
+  .comparison{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="disco"></canvas>
+
+<header>
+  <h1>⚡ THUNDERCORE ⚡</h1>
+  <p>NEON DISCO ESCAPE // ACTIVATE YOUR ENERGY</p>
+</header>
+
+<div class="controls">
+  <select id="algorithm">
+    <option value="bfs">BFS ALGORITHM</option>
+    <option value="dfs">DFS ALGORITHM</option>
+  </select>
+
+  <select id="difficulty">
+    <option value="easy">EASY</option>
+    <option value="medium" selected>MEDIUM</option>
+    <option value="hard">HARD</option>
+  </select>
+
+  <button id="solve">🤖 RUN AI</button>
+  <button id="compare">⚔️ COMPARE BFS vs DFS</button>
+  <button id="new">✨ NEW MAZE</button>
+  <button id="reset">↻ RESTART</button>
+  <button id="sound">🔊 SOUND ON</button>
+</div>
+
+<div class="stats">
+  <div class="stat"><span>ENERGY CORES</span><b id="cores">0 / 5</b></div>
+  <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+  <div class="stat"><span>MOVES</span><b id="moves">0</b></div>
+  <div class="stat"><span>TIME LEFT</span><b id="time">90</b></div>
+  <div class="stat"><span>VISITED CELLS</span><b id="visited">0</b></div>
+</div>
+
+<div class="game-frame">
+  <canvas id="game" width="630" height="630"></canvas>
+</div>
+
+<div id="message">Collect five energy cores, then escape through the portal!</div>
+
+<div class="panel">
+  <h2>🎮 HUMAN PLAYER CONTROL</h2>
+  <p>Use arrow keys or WASD, or tap the buttons to move your robot.</p>
+  <div class="dpad">
+    <span></span><button data-dx="0" data-dy="-1">⬆️</button><span></span>
+    <button data-dx="-1" data-dy="0">⬅️</button>
+    <button data-dx="0" data-dy="1">⬇️</button>
+    <button data-dx="1" data-dy="0">➡️</button>
+  </div>
+</div>
+
+<div class="panel" id="comparison" style="display:none">
+  <h2>⚡ BFS vs DFS — LIVE RESULTS</h2>
+  <div class="comparison">
+    <div class="result">
+      <h3>BFS SEARCH</h3>
+      <p>Visited cells: <b id="bfsVisited">-</b></p>
+      <p>Path length: <b id="bfsPath">-</b></p>
+      <p>Shortest path: <b>Guaranteed</b></p>
+      <p>Structure: <b>Queue</b></p>
+    </div>
+    <div class="result dfs">
+      <h3>DFS SEARCH</h3>
+      <p>Visited cells: <b id="dfsVisited">-</b></p>
+      <p>Path length: <b id="dfsPath">-</b></p>
+      <p>Shortest path: <b>Not guaranteed</b></p>
+      <p>Structure: <b>Stack</b></p>
+    </div>
+  </div>
+  <p id="comparisonMessage"></p>
+</div>
+
+<div class="legend">
+  <span>🟦 WALL</span>
+  <span>🟢 ROBOT</span>
+  <span>💎 ENERGY CORE</span>
+  <span>🟣 EXPLORED CELLS</span>
+  <span>🌀 EXIT PORTAL</span>
+</div>
+
+<footer>
+  BFS explores breadth-first. DFS explores depth-first.<br>
+  Human mode, AI solving, neon lighting and disco animations.
+</footer>
+
+<script>
+"use strict";
+
+/* ---------------- DISCO BACKGROUND ---------------- */
+
+const disco=document.getElementById("disco");
+const dc=disco.getContext("2d");
+let squares=[];
+
+function resizeDisco(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  disco.width=innerWidth*dpr;
+  disco.height=innerHeight*dpr;
+  disco.style.width=innerWidth+"px";
+  disco.style.height=innerHeight+"px";
+  dc.setTransform(dpr,0,0,dpr,0,0);
+
+  squares=Array.from({length:55},()=>({
+    x:Math.random()*innerWidth,
+    y:Math.random()*innerHeight,
+    size:5+Math.random()*22,
+    speed:.3+Math.random()*1.5,
+    angle:Math.random()*6.28,
+    spin:(Math.random()-.5)*.04,
+    hue:Math.random()*360,
+    alpha:.15+Math.random()*.4
+  }));
+}
+
+function animateDisco(){
+  dc.clearRect(0,0,innerWidth,innerHeight);
+
+  for(const s of squares){
+    s.y+=s.speed;
+    s.x+=Math.sin(s.angle)*.7;
+    s.angle+=s.spin;
+
+    if(s.y>innerHeight+30){
+      s.y=-30;
+      s.x=Math.random()*innerWidth;
+    }
+
+    dc.save();
+    dc.translate(s.x,s.y);
+    dc.rotate(s.angle);
+    dc.strokeStyle=`hsla(${s.hue},100%,65%,${s.alpha})`;
+    dc.fillStyle=`hsla(${(s.hue+55)%360},100%,55%,${s.alpha*.22})`;
+    dc.lineWidth=1.5;
+    dc.shadowBlur=14;
+    dc.shadowColor=`hsl(${s.hue},100%,60%)`;
+    dc.fillRect(-s.size/2,-s.size/2,s.size,s.size);
+    dc.strokeRect(-s.size/2,-s.size/2,s.size,s.size);
+    dc.restore();
+  }
+  requestAnimationFrame(animateDisco);
+}
+
+window.addEventListener("resize",resizeDisco);
+resizeDisco();
+animateDisco();
+
+/* ---------------- GAME AND MAZE ---------------- */
+
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const N=21,CELL=30;
+const $=id=>document.getElementById(id);
+const dirs=[[0,-1],[1,0],[0,1],[-1,0]];
+
+let maze=[],player={x:1,y:1},start={x:1,y:1};
+let exit={x:N-2,y:N-2},cores=[],collected=new Set();
+let moves=0,score=0,time=90,visitedCount=0;
+let finished=false,aiRunning=false,soundOn=true;
+let aiTimer=null,timerId=null;
+let explored=[],solution=[],frame=0,lightning=0;
+
+const key=p=>p.x+","+p.y;
+const same=(a,b)=>a.x===b.x&&a.y===b.y;
+const open=(x,y)=>x>=0&&y>=0&&x<N&&y<N&&maze[y][x]===0;
+
+function say(text){$("message").textContent=text}
+
+let audio=null;
+
+function beep(freq=500,duration=.08){
+  if(!soundOn)return;
+  try{
+    audio ||= new(window.AudioContext||window.webkitAudioContext)();
+    if(audio.state==="suspended")audio.resume();
+    const osc=audio.createOscillator();
+    const gain=audio.createGain();
+    osc.type="sawtooth";
+    osc.frequency.value=freq;
+    gain.gain.value=.025;
+    osc.connect(gain);
+    gain.connect(audio.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);
+    osc.stop(audio.currentTime+duration);
+  }catch(e){}
+}
+
+/* Randomized depth-first maze generation */
+function generateMaze(){
+  maze=Array.from({length:N},()=>Array(N).fill(1));
+  const stack=[{x:1,y:1}];
+  maze[1][1]=0;
+
+  while(stack.length){
+    const p=stack[stack.length-1];
+    const options=dirs.map(([dx,dy])=>({
+      x:p.x+dx*2,y:p.y+dy*2,dx,dy
+    })).filter(q=>
+      q.x>0&&q.x<N-1&&q.y>0&&q.y<N-1&&maze[q.y][q.x]===1
+    );
+
+    if(!options.length){stack.pop();continue}
+
+    const q=options[Math.floor(Math.random()*options.length)];
+    maze[p.y+q.dy][p.x+q.dx]=0;
+    maze[q.y][q.x]=0;
+    stack.push({x:q.x,y:q.y});
+  }
+
+  // Extra openings give the maze alternative routes.
+  const extra=$("difficulty").value==="easy"?48:
+              $("difficulty").value==="medium"?28:12;
+
+  for(let i=0;i<extra;i++){
+    const x=1+Math.floor(Math.random()*(N-2));
+    const y=1+Math.floor(Math.random()*(N-2));
+    maze[y][x]=0;
+  }
+
+  start={x:1,y:1};
+  exit={x:N-2,y:N-2};
+  maze[start.y][start.x]=0;
+  maze[exit.y][exit.x]=0;
+}
+
+function neighbors(p){
+  return dirs.map(([dx,dy])=>({x:p.x+dx,y:p.y+dy}))
+    .filter(p=>open(p.x,p.y));
+}
+
+/* Genuine BFS / DFS graph search */
+function search(from,to,algorithm){
+  const frontier=[from];
+  let head=0;
+  const seen=new Set([key(from)]);
+  const parent=new Map();
+  const order=[];
+  let found=false;
+
+  while(algorithm==="bfs"?head<frontier.length:frontier.length>0){
+    const p=algorithm==="bfs"?frontier[head++]:frontier.pop();
+    order.push(p);
+
+    if(same(p,to)){found=true;break}
+
+    let ns=neighbors(p);
+    if(algorithm==="dfs")ns.reverse();
+
+    for(const n of ns){
+      const k=key(n);
+      if(seen.has(k))continue;
+      seen.add(k);
+      parent.set(k,key(p));
+      frontier.push(n);
+    }
+  }
+
+  if(!found)return{path:[],order};
+
+  const path=[];
+  let cur=key(to),origin=key(from);
+
+  while(cur!==origin){
+    const [x,y]=cur.split(",").map(Number);
+    path.push({x,y});
+    cur=parent.get(cur);
+    if(cur===undefined)return{path:[],order};
+  }
+
+  path.reverse();
+  return{path,order};
+}
+
+function placeCores(){
+  cores=[];
+  collected=new Set();
+
+  const candidates=[];
+  for(let y=1;y<N-1;y++){
+    for(let x=1;x<N-1;x++){
+      if(open(x,y)&&!(x===start.x&&y===start.y)&&
+         !(x===exit.x&&y===exit.y)){
+        candidates.push({x,y});
+      }
+    }
+  }
+
+  for(let i=candidates.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [candidates[i],candidates[j]]=[candidates[j],candidates[i]];
+  }
+
+  cores=candidates.slice(0,5);
+}
+
+function buildPlan(){
+  let at={...player};
+  let remaining=cores.filter(c=>!collected.has(key(c)));
+  const plan=[],allExplored=[];
+
+  while(remaining.length){
+    let best=null,bestResult=null;
+
+    for(const c of remaining){
+      const result=search(at,c,$("algorithm").value);
+      if(!bestResult||result.path.length<bestResult.path.length){
+        best=c;
+        bestResult=result;
+      }
+    }
+
+    if(!bestResult||!bestResult.path.length)return null;
+
+    plan.push(...bestResult.path);
+    allExplored.push(...bestResult.order);
+    at={...best};
+    remaining=remaining.filter(c=>!same(c,best));
+  }
+
+  const final=search(at,exit,$("algorithm").value);
+  if(!same(at,exit)&&!final.path.length)return null;
+
+  plan.push(...final.path);
+  allExplored.push(...final.order);
+
+  return{plan,allExplored};
+}
+
+/* ---------------- HUMAN PLAY ---------------- */
+
+function updateStats(){
+  $("cores").textContent=collected.size+" / 5";
+  $("score").textContent=score;
+  $("moves").textContent=moves;
+  $("time").textContent=time;
+  $("visited").textContent=visitedCount;
+}
+
+function collect(){
+  const c=cores.find(p=>same(p,player)&&!collected.has(key(p)));
+
+  if(c){
+    collected.add(key(c));
+    score+=100;
+    beep(900,.12);
+    say("ENERGY CORE ACQUIRED! "+collected.size+"/5");
+  }
+
+  if(same(player,exit)){
+    if(collected.size===5){
+      finished=true;
+      stopAI();
+      clearInterval(timerId);
+      score+=time*5;
+      say("⚡ ESCAPE SUCCESSFUL! THUNDERCORE SECURED!");
+      beep(1100,.25);
+    }else{
+      say("PORTAL LOCKED! Collect all five energy cores!");
+    }
+  }
+
+  updateStats();
+}
+
+function move(dx,dy,fromAI=false){
+  if(finished||(aiRunning&&!fromAI))return;
+
+  const x=player.x+dx,y=player.y+dy;
+  if(!open(x,y)){
+    if(!fromAI)beep(140,.04);
+    return;
+  }
+
+  player={x,y};
+  moves++;
+  collect();
+  draw();
+
+  if(!fromAI)beep(420,.04);
+}
+
+/* ---------------- AI ANIMATION ---------------- */
+
+function stopAI(){
+  aiRunning=false;
+  if(aiTimer){clearInterval(aiTimer);aiTimer=null}
+}
+
+function runAI(){
+  if(finished)return;
+
+  if(aiRunning){
+    stopAI();
+    say("AI PAUSED. Continue manually or run AI again.");
+    draw();
+    return;
+  }
+
+  const result=buildPlan();
+  if(!result){
+    say("No route found. Generate a new maze.");
+    return;
+  }
+
+  solution=result.plan;
+  explored=result.allExplored;
+  visitedCount=0;
+  let step=0;
+  aiRunning=true;
+
+  say($("algorithm").value.toUpperCase()+" SEARCH ACTIVATED!");
+  draw();
+
+  aiTimer=setInterval(()=>{
+    if(finished){stopAI();return}
+
+    if(step>=solution.length){
+      stopAI();
+      say("AI ROUTE COMPLETE!");
+      draw();
+      return;
+    }
+
+    const next=solution[step++];
+    move(next.x-player.x,next.y-player.y,true);
+    visitedCount=Math.min(explored.length,visitedCount+3);
+    updateStats();
+    draw();
+  },$("difficulty").value==="hard"?65:120);
+}
+
+/* ---------------- BFS vs DFS COMPARISON ---------------- */
+
+function compare(){
+  if(finished||aiRunning){
+    say("Stop the AI or restart before comparing.");
+    return;
+  }
+
+  const bfs=search(player,exit,"bfs");
+  const dfs=search(player,exit,"dfs");
+
+  $("bfsVisited").textContent=bfs.order.length;
+  $("bfsPath").textContent=bfs.path.length+" steps";
+  $("dfsVisited").textContent=dfs.order.length;
+  $("dfsPath").textContent=dfs.path.length+" steps";
+
+  let text;
+  if(bfs.path.length<dfs.path.length){
+    text="BFS found the shorter path in this maze. DFS explored a longer route.";
+  }else if(bfs.path.length===dfs.path.length){
+    text="Both found paths of equal length here. DFS does not guarantee a shortest path.";
+  }else{
+    text="DFS happened to find a shorter path in this run, but BFS still guarantees the shortest path in an unweighted maze.";
+  }
+
+  $("comparisonMessage").textContent=text+
+    " Both searches started at the robot and targeted the exit.";
+
+  $("comparison").style.display="block";
+  explored=bfs.order;
+  visitedCount=bfs.order.length;
+  solution=bfs.path;
+  updateStats();
+  draw();
+  say("BFS vs DFS comparison complete!");
+}
+
+/* ---------------- NEON RENDERING ---------------- */
+
+function drawLightning(){
+  if(Math.random()<.025)lightning=4;
+
+  if(lightning>0){
+    lightning--;
+    ctx.save();
+    ctx.strokeStyle="#e2ffff";
+    ctx.lineWidth=2.5;
+    ctx.shadowColor="#00eaff";
+    ctx.shadowBlur=18;
+    ctx.beginPath();
+
+    let x=Math.random()*630,y=0;
+    ctx.moveTo(x,y);
+
+    for(let i=0;i<7;i++){
+      x+=(Math.random()-.5)*95;
+      y+=95;
+      ctx.lineTo(x,y);
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function draw(){
+  frame++;
+
+  const bg=ctx.createLinearGradient(0,0,630,630);
+  bg.addColorStop(0,"#05091d");
+  bg.addColorStop(1,"#15102d");
+  ctx.fillStyle=bg;
+  ctx.fillRect(0,0,630,630);
+
+  // Neon grid.
+  ctx.strokeStyle="#17264d";
+  ctx.lineWidth=.7;
+  for(let i=0;i<=N;i++){
+    ctx.beginPath();ctx.moveTo(i*CELL,0);ctx.lineTo(i*CELL,630);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,i*CELL);ctx.lineTo(630,i*CELL);ctx.stroke();
+  }
+
+  // Walls.
+  for(let y=0;y<N;y++){
+    for(let x=0;x<N;x++){
+      const px=x*CELL,py=y*CELL;
+
+      if(maze[y][x]===1){
+        ctx.save();
+        ctx.shadowBlur=8;
+        ctx.shadowColor="#087cff";
+        ctx.fillStyle="#10295e";
+        ctx.fillRect(px+2,py+2,CELL-4,CELL-4);
+        ctx.fillStyle="#1c4c9b";
+        ctx.fillRect(px+5,py+5,CELL-10,CELL-10);
+        ctx.strokeStyle="#368dff";
+        ctx.lineWidth=1;
+        ctx.strokeRect(px+5,py+5,CELL-10,CELL-10);
+        ctx.restore();
+      }
+    }
+  }
+
+  // Animated exploration overlay.
+  const visible=new Set(explored.slice(0,visitedCount).map(key));
+  for(const k of visible){
+    const [x,y]=k.split(",").map(Number);
+    ctx.fillStyle="rgba(173,65,255,.38)";
+    ctx.fillRect(x*CELL+4,y*CELL+4,CELL-8,CELL-8);
+  }
+
+  // AI path.
+  if(solution.length){
+    ctx.save();
+    ctx.strokeStyle="#ffe65c";
+    ctx.lineWidth=4;
+    ctx.shadowColor="#ff9e00";
+    ctx.shadowBlur=12;
+    ctx.lineJoin="round";
+    ctx.beginPath();
+
+    ctx.moveTo(player.x*CELL+CELL/2,player.y*CELL+CELL/2);
+    solution.forEach(p=>ctx.lineTo(p.x*CELL+CELL/2,p.y*CELL+CELL/2));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Exit portal.
+  const ex=exit.x*CELL+CELL/2,ey=exit.y*CELL+CELL/2;
+  ctx.save();
+  ctx.shadowColor="#00ffff";
+  ctx.shadowBlur=20;
+  ctx.strokeStyle="#29faff";
+  ctx.lineWidth=4;
+  ctx.beginPath();
+  ctx.ellipse(ex,ey,10+Math.sin(frame*.09)*2,12,0,0,Math.PI*2);
+  ctx.stroke();
+
+  ctx.strokeStyle="#dc55ff";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.ellipse(ex,ey,6,8,0,0,Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+
+  // Energy cores.
+  for(const c of cores){
+    if(collected.has(key(c)))continue;
+
+    const x=c.x*CELL+CELL/2,y=c.y*CELL+CELL/2;
+    const bob=Math.sin(frame*.12)*2;
+
+    ctx.save();
+    ctx.translate(x,y+bob);
+    ctx.rotate(frame*.025);
+    ctx.shadowColor="#ff35dc";
+    ctx.shadowBlur=16;
+    ctx.fillStyle="#ff53ef";
+    ctx.beginPath();
+    ctx.moveTo(0,-10);
+    ctx.lineTo(9,0);
+    ctx.lineTo(0,10);
+    ctx.lineTo(-9,0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle="#ffffff";
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Robot.
+  const px=player.x*CELL+CELL/2;
+  const py=player.y*CELL+CELL/2;
+
+  ctx.save();
+  ctx.shadowColor="#00ffb7";
+  ctx.shadowBlur=18;
+  ctx.fillStyle="#00e9a5";
+  ctx.beginPath();
+  ctx.roundRect(px-10,py-10,20,20,5);
+  ctx.fill();
+
+  ctx.fillStyle="#08233d";
+  ctx.fillRect(px-7,py-5,14,7);
+  ctx.fillStyle="#a7ffff";
+  ctx.fillRect(px-5,py-4,3,3);
+  ctx.fillRect(px+2,py-4,3,3);
+
+  ctx.strokeStyle="#65ffe0";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(px,py-10);
+  ctx.lineTo(px,py-15-Math.sin(frame*.2)*2);
+  ctx.stroke();
+  ctx.restore();
+
+  drawLightning();
+
+  if(finished&&time<=0){
+    ctx.fillStyle="rgba(3,5,20,.8)";
+    ctx.fillRect(0,0,630,630);
+    ctx.fillStyle="#ff71ef";
+    ctx.font="bold 29px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("ENERGY DEPLETED",315,315);
+  }
+}
+
+/* ---------------- RESET / INPUT ---------------- */
+
+function resetGame(){
+  stopAI();
+  clearInterval(timerId);
+
+  generateMaze();
+  player={...start};
+  placeCores();
+
+  moves=0;
+  score=0;
+  time=$("difficulty").value==="easy"?120:
+       $("difficulty").value==="medium"?90:60;
+  visitedCount=0;
+  finished=false;
+  explored=[];
+  solution=[];
+
+  $("comparison").style.display="none";
+  updateStats();
+  draw();
+  say("Collect all five energy cores, then escape!");
+
+  timerId=setInterval(()=>{
+    if(finished)return;
+    time--;
+    updateStats();
+
+    if(time<=0){
+      finished=true;
+      stopAI();
+      clearInterval(timerId);
+      say("ENERGY DEPLETED! Click NEW MAZE to try again.");
+      draw();
+    }
+  },1000);
+}
+
+document.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  const map={
+    arrowup:[0,-1],w:[0,-1],
+    arrowdown:[0,1],s:[0,1],
+    arrowleft:[-1,0],a:[-1,0],
+    arrowright:[1,0],d:[1,0]
+  };
+
+  if(map[k]){
+    e.preventDefault();
+    move(...map[k]);
+  }
+});
+
+document.querySelectorAll("[data-dx]").forEach(button=>{
+  button.addEventListener("click",()=>{
+    move(Number(button.dataset.dx),Number(button.dataset.dy));
+  });
+});
+
+$("solve").addEventListener("click",runAI);
+$("compare").addEventListener("click",compare);
+$("new").addEventListener("click",resetGame);
+$("reset").addEventListener("click",resetGame);
+
+$("difficulty").addEventListener("change",resetGame);
+
+$("sound").addEventListener("click",()=>{
+  soundOn=!soundOn;
+  $("sound").textContent=soundOn?"🔊 SOUND ON":"🔇 SOUND OFF";
+  if(soundOn)beep(700);
+});
+
+resetGame();
+</script>
+</body>
+</html>
